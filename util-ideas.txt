@@ -1,0 +1,9 @@
+trimps script utils:
+	1. autoequip pro
+	2. manual equality for farming
+	3. not dying in dailies
+		3.1 not letting enemy enrage (beat 1 easy map enemy after 3-5 deaths)
+
+u1 script:
+	auto portal
+	switch stances
