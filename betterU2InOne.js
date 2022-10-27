@@ -1,8 +1,23 @@
-// set equality
+// ==UserScript==
+// @name         BetterU2
+// @version      0.1
+// @namespace    https://github.com/NathanSchaar/trimpsScripts/blob/main
+// @updateURL    https://github.com/NathanSchaar/trimpsScripts/blob/main/userScript.js
+// @description  small u2 lategame improvements
+// @author       Sagolel
+// @include      *trimps.github.io*
+// @connect      *trimps.github.io*
+// @connect      self
+// @grant        GM_xmlhttpRequest
+// ==/UserScript==
 
 /*
-first test script:
-	count deaths, after 3 deaths, quit into maps, create map setting 3 map, run it, defeat 1 enemy and go back in overworld
+var script = document.createElement('script');
+script.id = 'BetterU2-Sago';
+script.src = 'https://github.com/NathanSchaar/trimpsScripts/blob/main/betterU2.js';
+//script.setAttribute('crossorigin',"use-credentials");
+script.setAttribute('crossOrigin',"anonymous");
+document.head.appendChild(script);
 */
 
 var battlesLostBefore = game.stats.battlesLost.value
