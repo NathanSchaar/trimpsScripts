@@ -60,26 +60,29 @@ async function heliumFarm(wind=false) {
 }
 
 var clearingStacks = false;
-async function antiEnrageBetter(){
+function antiEnrageBetter(){
 	if (!game.global.challengeActive == "Daily" || !(typeof game.global.dailyChallenge.bloodthirst !== 'undefined')){
 		return;
 	}
 	if (game.global.mapsActive) {
+		if (!clearingStacks) return;
 		let mapId = game.global.lookingAtMap;
 		let map = game.global.mapsOwnedArray[getMapIndex(mapId)];
-		if (map.location == "Void" || !clearingStacks) return;
+		if (map.location == "Void") return;
 		if (game.global.dailyChallenge.bloodthirst.stacks == 0){
 			clearingStacks = false;
             while (game.global.mapsActive || game.global.preMapsActive){
                 mapsClicked();
-                await sleep(15);
+                //await sleep(15);
             }
 		}
 	} else {
-		if (game.global.dailyChallenge.bloodthirst.stacks >= dailyModifiers.bloodthirst.getFreq(game.global.dailyChallenge.bloodthirst.strength)-1){
+		let stacks = game.global.dailyChallenge.bloodthirst.stacks;
+		let freq = dailyModifiers.bloodthirst.getFreq(game.global.dailyChallenge.bloodthirst.strength);
+		if (stacks == freq-1 || (stacks>0 && stacks == freq-2)){
             while (!game.global.preMapsActive) {
                 mapsClicked();
-                await sleep(15);
+                //await sleep(15);
             }
 			let currMapId = game.global.currentMapId;
 			let mapId = game.global.lookingAtMap;
@@ -89,9 +92,9 @@ async function antiEnrageBetter(){
 					recycleMap();
 				}
 				selectAdvMapsPreset(3);
-                sleep (10);
+                //sleep (10);
                 buyMap();
-                sleep (10);
+                //sleep (10);
 			}
 			clearingStacks = true;
 			runMap();
@@ -198,5 +201,5 @@ function autoEquality(){
 
 game.global.addonUser = true;
 //setInterval(heliumFarm, 2000);
-//setInterval(antiEnrageBetter, 200);
+setInterval(antiEnrageBetter, 100);
 setInterval(autoEquality, 300);
