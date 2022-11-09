@@ -123,7 +123,7 @@ async function antiEmpower(){
 				keep track of highest atk ever seen so far, (if not on last zone, then multiply by 2.5 for every zone before)
 			possibility 2:
 				keep track of high atk of non mutated trimp in zone before, apply multiplier for worst possible enemy to get attack
-				adjust equality based on what imp is next (and current) 
+				adjust equality based on what imp is next (and current)
 		keep equality always above point that would make highest atk at least a 2shot
 		if currentTrimpHealth < enemyMaxAtk at any point: quit to map chamber, adjust equality
 	we could use return to mapChamber to avoid problems and overlaps with other future functionality
@@ -164,8 +164,62 @@ async function antiEmpower(){
 	}
 
 }
+function rollDmg(baseAtk, isTrimp, minOrMax, cell, repeat=5) {
+	let atk = calculateDamage(baseAtk,false,isTrimp,false,cell);
+	for (let i=1; i<repeat; i++){
+		atk = minOrMax(atk, calculateDamage(baseAtk,false,isTrimp,false,cell));
+	}
+	return atk;
+}
+
+function inVoidMap(){
+	if (game.global.mapsActive) {
+		let mapId = game.global.lookingAtMap;
+		let map = game.global.mapsOwnedArray[getMapIndex(mapId)];
+		if (map.location == "Void") return true;
+	}
+	return false;
+}
+
+function whenToOnlyAtkOnce(atkMod,doubleAtk,reflectChance){
+	// do the math better, right now pretty arbitrary, maybe also use gamma burst dmg
+	let atkModWeight = doubleAtk ? 7/4 : 1;
+	atkModWeight *= 6;
+	console.log("rC",reflectChance, "weightedAtkMod", (atkMod-1)*atkModWeight);
+	if (reflectChance + (atkMod-1)*atkModWeight > 65) return true;
+	return false;
+}
+
+
+function decideNumberOfHits(){
+	let numberOfHits = 4;
+	let critChance = 0;
+	let reflectChance = 0;
+	let inVoid = inVoidMap();
+	let critMod = 1;
+	let doubleAtk = false;
+	if (inVoid && game.global.voidBuff == "getCrit") {
+		critChance+=25;
+		critMod = 5;
+	}
+	if (typeof game.global.dailyChallenge.crits !== 'undefined'){
+		critChance+=25;
+		critMod = Math.max(critMod,1+0.5*game.global.dailyChallenge.crits.strength)
+	}
+	if (game.global.voidBuff == "doubleAttack") doubleAtk = true;
+	if (game.global.challengeActive == "Daily" && (typeof game.global.dailyChallenge.mirrored !== 'undefined')){
+		reflectChance = game.global.dailyChallenge.mirrored.strength;
+	}
+	let atkMod = 1+(critChance/100*critMod);
+	if (whenToOnlyAtkOnce(atkMod,doubleAtk,reflectChance)) return {hits:1,mod:1};
+	if (doubleAtk){
+		numberOfHits = 7;
+	}
+	return {hits:numberOfHits,mod:atkMod};
+}
 
 function autoEquality(){
+		if (game.global.world < 290) return;
 		let cell = null;
 		if (game.global.mapsActive) {
 			let cellNum = game.global.lastClearedMapCell + 1;
@@ -175,20 +229,29 @@ function autoEquality(){
 			cell = game.global.gridArray[cellNum];
 		}
 		if (game.badGuys[cell.name].fast || (cell.u2Mutation && cell.u2Mutation.length) || game.global.voidBuff == "doubleAttack"){
-			let atk = calculateDamage(cell.attack, false, false, false, cell);
-			atk = Math.max(atk,calculateDamage(cell.attack, false, false, false, cell));
-			atk = Math.max(atk,calculateDamage(cell.attack, false, false, false, cell));
-			atk = Math.max(atk,calculateDamage(cell.attack, false, false, false, cell));
-			atk = Math.max(atk,calculateDamage(cell.attack, false, false, false, cell));
+			let atk = rollDmg(cell.attack,false,Math.max,cell);
 			let shield = game.global.soldierEnergyShieldMax*3;
 			let equality = game.portal.Equality.getActiveLevels();
 			let rawAtk = rawAttack(atk,equality);
-			if (game.global.challengeActive == "Daily" && (typeof game.global.dailyChallenge.mirrored !== 'undefined')){
-				let dailyReflect = game.global.dailyChallenge.mirrored.strength
-				if (dailyReflect > 55 || (typeof game.global.dailyChallenge.crits !== 'undefined' && dailyReflect+game.global.dailyChallenge.crits.strength>55)) shield*=4;
+			/*let dontCalcAgain = false;
+ 			if (game.global.mapsActive){
+ 				let map = game.global.mapsOwnedArray[getMapIndex(mapId)];
+				if (map && map.level < game.global.world){
+					let calcedEquality = neededEquality(rawAtk,shield);
+					calcedEquality = Math.min(game.portal.Equality.radLevel,Math.max(0,calcedEquality));
+					let slider = {id:"equalityDisabledSlider", value:calcedEquality};
+					scaleEqualityScale(slider);
+					if (rollDmg(game.global.soldierCurrentAttack,true,Math.min) > cell.health){
+						dontCalcAgain = true;
+						//console.log("probably 1-shotting the enemy");
+					}
+				}
 			}
-			let calcedEquality = neededEquality(rawAtk,shield/4);
-			console.log("atk: ",atk, "rawAtk: ", rawAtk, " shield: ",shield, "calcedEquality: ", calcedEquality);
+			if (dontCalcAgain) return;*/
+			let hitsAndDmgObj = decideNumberOfHits();
+			let calcedEquality = neededEquality(hitsAndDmgObj.mod*rawAtk,shield/hitsAndDmgObj.hits);
+			//console.log("hits: ",hitsAndDmgObj.hits, "atkMod: ", hitsAndDmgObj.mod, " shield: ",shield, "calcedEquality: ", calcedEquality);
+			//console.log("atk: ",atk, "rawAtk: ", rawAtk, " shield: ",shield, "calcedEquality: ", calcedEquality);
 			calcedEquality = Math.min(game.portal.Equality.radLevel,Math.max(0,calcedEquality));
 			let slider = {id:"equalityDisabledSlider", value:calcedEquality};
 			scaleEqualityScale(slider);
@@ -202,4 +265,4 @@ function autoEquality(){
 game.global.addonUser = true;
 //setInterval(heliumFarm, 2000);
 setInterval(antiEnrageBetter, 100);
-setInterval(autoEquality, 300);
+setInterval(autoEquality, 50);
