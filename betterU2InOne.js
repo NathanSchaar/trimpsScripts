@@ -103,13 +103,26 @@ function antiEnrageBetter(){
 }
 
 
-function rawAttack(atk,equality,mult=0.9){
+function rawAttack(atk,equality,mult){
+	if (typeof mult == "undefined") mult = 0.9;
 	return atk / (mult**equality);
 }
-function neededEquality(rawAttack, desiredAttack,mult=0.9){
-	let neQ =  Math.ceil(Math.log(desiredAttack/rawAttack) / Math.log(mult));
+function neededEquality(rawAttack, desiredAttack,mult){
+	if (typeof mult == "undefined") mult = 0.9;
+	let neQ = Math.ceil(Math.log(desiredAttack/rawAttack) / Math.log(mult));
 	return Math.min(game.portal.Equality.radLevel,Math.max(0,neQ));
 }
+
+function neededEqualityDumb(rawAttack, desiredAttack, mult){
+	if (typeof mult == "undefined") mult = 0.9;
+	out = 1;
+	while (out <= game.portal.Equality.radLevel){
+		if (rawAttack*(mult**out) < desiredAttack) return out-1;
+		out ++;
+	}
+	return out;
+}
+
 var strongestEnemy = {
 	atk : 0,
 	zoneSeen : 0
@@ -229,6 +242,7 @@ function autoEquality(){
 			let cellNum = game.global.lastClearedCell + 1;
 			cell = game.global.gridArray[cellNum];
 		}
+		if (cell.health < 1) return;
 		if (game.badGuys[cell.name].fast || (cell.u2Mutation && cell.u2Mutation.length) || game.global.voidBuff == "doubleAttack"){
 			let atk = rollDmg(cell.attack,false,Math.max,cell);
 			let shield = game.global.soldierEnergyShieldMax*3;
@@ -240,22 +254,20 @@ function autoEquality(){
  				let map = game.global.mapsOwnedArray[getMapIndex(mapId)];
 				if (map && map.level < game.global.world){
 					let playerCritChance = getPlayerCritChance();
-					let trimpDmg = rollDmg(game.global.soldierCurrentAttack,true,Math.min)*(getMegaCritDamageMult(Math.floor(playerCritChance)));
+					let trimpDmgBefore = rollDmg(game.global.soldierCurrentAttack,true,Math.min)
+					let trimpDmg = trimpDmgBefore * getPlayerCritDamageMult()*(getMegaCritDamageMult(Math.floor(playerCritChance)));
 					let trimpEqMult = game.portal.Equality.getModifier(true);
 					let rawTrimpAtk = rawAttack(trimpDmg,equality,trimpEqMult);
-					let calcedTrimpEquality = neededEquality(rawTrimpAtk, cell.health)-1
+					let calcedTrimpEquality = neededEquality(rawTrimpAtk, cell.health,trimpEqMult)-1
 					let calcedEquality = neededEquality(rawAtk,shield);
 					console.log(calcedTrimpEquality,calcedEquality);
-					//calcedTrimpEquality = 150;
-					if (calcedTrimpEquality >= calcedEquality){
-						let slider = {id:"equalityDisabledSlider", value:calcedTrimpEquality};
+					if (calcedTrimpEquality >= calcedEquality-1){
+						let slider = {id:"equalityDisabledSlider", value:Math.max(calcedEquality,calcedTrimpEquality)};
 						scaleEqualityScale(slider);
-						dontCalcAgain = true;
-						//console.log("probably 1-shotting the enemy");
+						return;
 					}
 				}
 			}
-			if (dontCalcAgain) return;
 			let hitsAndDmgObj = decideNumberOfHits();
 			let calcedEquality = neededEquality(hitsAndDmgObj.mod*rawAtk,shield/hitsAndDmgObj.hits);
 			//console.log("hits: ",hitsAndDmgObj.hits, "atkMod: ", hitsAndDmgObj.mod, " shield: ",shield, "calcedEquality: ", calcedEquality);
